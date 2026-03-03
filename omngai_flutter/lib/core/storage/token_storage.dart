@@ -6,18 +6,27 @@ class TokenStorage {
   static const _kToken = 'token';
   static const _kUserId = 'userId';
 
-  static Future<void> saveToken(String token) =>
-      _storage.write(key: _kToken, value: token);
+  // ---------------- TOKEN ----------------
+  static Future<void> saveToken(String token) async {
+    await _storage.write(key: _kToken, value: token);
+  }
 
-  static Future<String?> getToken() =>
-      _storage.read(key: _kToken);
+  static Future<String?> getToken() async {
+    return await _storage.read(key: _kToken);
+  }
 
-  static Future<void> saveUserId(String userId) =>
-      _storage.write(key: _kUserId, value: userId);
+  // ---------------- USER ID ----------------
+  static Future<void> saveUserId(int userId) async {
+    await _storage.write(key: _kUserId, value: userId.toString());
+  }
 
-  static Future<String?> getUserId() =>
-      _storage.read(key: _kUserId);
+  static Future<int?> getUserId() async {
+    final value = await _storage.read(key: _kUserId);
+    if (value == null) return null;
+    return int.tryParse(value);
+  }
 
+  // ---------------- CLEAR ----------------
   static Future<void> clear() async {
     await _storage.delete(key: _kToken);
     await _storage.delete(key: _kUserId);

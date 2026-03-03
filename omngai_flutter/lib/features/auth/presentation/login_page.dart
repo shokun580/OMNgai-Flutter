@@ -32,24 +32,44 @@ class _LoginPageState extends State<LoginPage> {
         },
       );
 
-      if (res.statusCode == 200 && res.data["token"] != null) {
-        await TokenStorage.saveToken(res.data["token"]);
-        await TokenStorage.saveUserId("${res.data["user"]["id"]}");
+      final status = res.statusCode ?? 0;
+
+      if (status == 200 && res.data["token"] != null) {
+        final token = res.data["token"] as String;
+
+        final userIdDynamic = res.data["user"]?["id"];
+        final userId = (userIdDynamic is int)
+            ? userIdDynamic
+            : int.tryParse(userIdDynamic?.toString() ?? "");
+
+        if (userId == null) {
+          setState(() => msg = "❌ Login failed: userId not found");
+          return;
+        }
+
+        await TokenStorage.saveToken(token);
+        await TokenStorage.saveUserId(userId);
 
         if (!mounted) return;
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomePage()),
         );
       } else {
-        setState(() => msg = "❌ Login failed (${res.statusCode})");
+        setState(() => msg = "❌ Login failed ($status)");
       }
     } catch (e) {
       setState(() => msg = "❌ Error: $e");
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
+  }
 
-    setState(() => loading = false);
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override
