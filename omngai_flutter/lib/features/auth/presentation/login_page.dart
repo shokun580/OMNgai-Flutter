@@ -121,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  hintText: 'Email',
+                  hintText: 'Username',
                   hintStyle: TextStyle(color: Colors.grey.shade400),
                   prefixIcon: Icon(
                     Icons.email_outlined,
