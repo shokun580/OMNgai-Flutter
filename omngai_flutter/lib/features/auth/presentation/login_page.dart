@@ -11,11 +11,22 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final usernameController = TextEditingController();
+  final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   String msg = "";
   bool loading = false;
+
+  bool get _isFormFilled =>
+      emailController.text.trim().isNotEmpty &&
+      passwordController.text.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    emailController.addListener(() => setState(() {}));
+    passwordController.addListener(() => setState(() {}));
+  }
 
   Future<void> login() async {
     setState(() {
@@ -27,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
       final res = await DioClient.dio.post(
         "/login",
         data: {
-          "username": usernameController.text.trim(),
+          "username": emailController.text.trim(),
           "password": passwordController.text.trim(),
         },
       );
@@ -67,37 +78,148 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    usernameController.dispose();
+    emailController.dispose();
     passwordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isActive = _isFormFilled;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            TextField(
-              controller: usernameController,
-              decoration: const InputDecoration(labelText: "Username"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: loading ? null : login,
-              child: Text(loading ? "Loading..." : "Login"),
-            ),
-            const SizedBox(height: 12),
-            Text(msg),
-          ],
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            children: [
+              const SizedBox(height: 50),
+
+              // --- Title ---
+              const Text(
+                'Login',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              // --- Logo ---
+              Image.asset(
+                'assets/images/image 5.png',
+                height: 180,
+              ),
+
+              const SizedBox(height: 40),
+
+              // --- Email Field ---
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Email',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  prefixIcon: Icon(
+                    Icons.email_outlined,
+                    color: Colors.grey.shade400,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                        color: const Color(0xFF94CD7E), width: 1.5),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // --- Password Field ---
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'Password',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  prefixIcon: Icon(
+                    Icons.vpn_key_outlined,
+                    color: Colors.grey.shade400,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                        color: const Color(0xFF94CD7E), width: 1.5),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // --- Login Button ---
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: (loading || !isActive) ? null : login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isActive
+                        ? const Color(0xFF94CD7E)
+                        : Colors.grey.shade400,
+                    disabledBackgroundColor: Colors.grey.shade400,
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: Text(
+                    loading ? 'Loading...' : 'Login',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // --- Message ---
+              if (msg.isNotEmpty)
+                Text(
+                  msg,
+                  style: const TextStyle(color: Colors.red),
+                ),
+            ],
+          ),
         ),
       ),
     );

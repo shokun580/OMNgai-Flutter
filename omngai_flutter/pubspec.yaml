@@ -33,3 +33,4 @@ flutter:
   # โหลดไฟล์ env (ต้องมีไฟล์ .env อยู่ที่ root โปรเจค)
   assets:
     - .env
+    - assets/images/

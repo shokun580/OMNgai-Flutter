@@ -12,12 +12,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  int _currentIndex = 0;
+
   int? userId;
 
   bool loading = true;
   String? error;
 
-  Map<String, dynamic>? account; // ✅ เหลือบัญชีเดียว
+  Map<String, dynamic>? account;
   bool txLoading = true;
   String? txError;
   List<dynamic> transactions = [];
@@ -32,14 +34,13 @@ class _HomePageState extends State<HomePage> {
     userId = await TokenStorage.getUserId();
 
     if (userId == null) {
-      await logout(); // ถ้าไม่มี userId ให้กลับไป login
+      await logout();
       return;
     }
 
     await Future.wait([loadAccount(), loadTransactions()]);
   }
 
-  // ✅ ดึงบัญชีของ user คนนี้เท่านั้น (ไม่แก้ backend)
   Future<void> loadAccount() async {
     setState(() {
       loading = true;
@@ -64,13 +65,11 @@ class _HomePageState extends State<HomePage> {
 
         Map<String, dynamic>? parsedAccount;
 
-        // backend อาจส่งมาเป็น list หรือ object
         if (data is List && data.isNotEmpty && data.first is Map) {
           parsedAccount = Map<String, dynamic>.from(data.first);
         } else if (data is Map) {
           final map = Map<String, dynamic>.from(data);
 
-          // เผื่อ backend wrap มาเป็น { accounts: [..] } / { data: [..] }
           if (map["accounts"] is List && (map["accounts"] as List).isNotEmpty) {
             final first = (map["accounts"] as List).first;
             if (first is Map) parsedAccount = Map<String, dynamic>.from(first);
@@ -78,7 +77,6 @@ class _HomePageState extends State<HomePage> {
             final first = (map["data"] as List).first;
             if (first is Map) parsedAccount = Map<String, dynamic>.from(first);
           } else {
-            // หรือเป็น account object ตรง ๆ
             parsedAccount = map;
           }
         }
@@ -123,7 +121,6 @@ class _HomePageState extends State<HomePage> {
       if (status >= 200 && status < 300) {
         final data = res.data;
 
-        // ✅ backend ส่งรูปแบบ { message, data: [...] }
         List<dynamic> list = [];
         if (data is Map && data["data"] is List) {
           list = List<dynamic>.from(data["data"]);
@@ -160,166 +157,379 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> goAction(bool isDeposit) async {
+  void _onTabTapped(int index) {
+    if (index == 1) {
+      // ฝากเงิน
+      _goAction(true);
+    } else if (index == 2) {
+      // ถอนเงิน
+      _goAction(false);
+    } else {
+      setState(() => _currentIndex = 0);
+    }
+  }
+
+  Future<void> _goAction(bool isDeposit) async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ActionPage(isDeposit: isDeposit)),
     );
 
-    // กลับมาแล้ว refresh
+    // กลับมาแล้ว refresh + กลับไปแท็บบัญชี
+    setState(() => _currentIndex = 0);
     await Future.wait([loadAccount(), loadTransactions()]);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("OmNgai Flutter"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await Future.wait([loadAccount(), loadTransactions()]);
-            },
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: loading
+            ? const Center(child: CircularProgressIndicator())
+            : error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(error!, textAlign: TextAlign.center),
+                    ),
+                  )
+                : _buildAccountBody(),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+        backgroundColor: const Color(0xFFFFFFFF),
+        selectedItemColor: const Color(0xFF2E7D6F),
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            activeIcon: Icon(Icons.account_balance_wallet),
+            label: 'บัญชี',
           ),
-          IconButton(icon: const Icon(Icons.logout), onPressed: logout),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            activeIcon: Icon(Icons.add_circle),
+            label: 'ฝากเงิน',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.remove_circle_outline),
+            activeIcon: Icon(Icons.remove_circle),
+            label: 'ถอนเงิน',
+          ),
         ],
       ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(error!, textAlign: TextAlign.center),
+    );
+  }
+
+  Widget _buildAccountBody() {
+    final acNo = account?["ac_no"]?.toString() ?? "-";
+    final balance = account?["ac_balance"]?.toString() ?? "0";
+    // Format balance with 2 decimal places
+    final balanceNum = double.tryParse(balance) ?? 0;
+    final balanceStr = balanceNum.toStringAsFixed(2);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Future.wait([loadAccount(), loadTransactions()]);
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: [
+          const SizedBox(height: 16),
+
+          // ── Header: OmNgai + icons ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'OmNgai',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-            )
-          : Column(
-              children: [
-                // ✅ ปุ่ม ฝาก / ถอน
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => goAction(true),
-                          child: const Text("ฝาก"),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => goAction(false),
-                          child: const Text("ถอน"),
-                        ),
-                      ),
-                    ],
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.black54),
+                    onPressed: () async {
+                      await Future.wait([
+                        loadAccount(),
+                        loadTransactions(),
+                      ]);
+                    },
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.red),
+                    onPressed: logout,
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Green Account Card ──
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF5CB85C), Color(0xFF94CD7E)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Account title + number
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Account',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          acNo,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Pig icon (white savings icon)
+                    const Icon(
+                      Icons.savings,
+                      size: 70,
+                      color: Colors.white,
+                    ),
+                  ],
                 ),
 
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      await Future.wait([loadAccount(), loadTransactions()]);
-                    },
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: Text("Account"),
-                        ),
+                const SizedBox(height: 16),
 
-                        if (account == null)
-                          const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text("No account"),
-                          )
-                        else
-                          ListTile(
-                            title: Text(account!["ac_no"]?.toString() ?? "-"),
-                            subtitle: Text(
-                              "Balance: ${account!["ac_balance"]?.toString() ?? "0"}",
-                            ),
-                          ),
-
-                        const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: Text("Transactions"),
-                        ),
-
-                        if (txLoading)
-                          const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          )
-                        else if (txError != null)
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(txError!),
-                          )
-                        else if (transactions.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text("No transactions"),
-                          )
-                        else
-                          ...transactions.map((t) {
-                            if (t is! Map) {
-                              return ListTile(
-                                title: const Text("Transaction"),
-                                subtitle: Text(t.toString()),
-                              );
-                            }
-
-                            final tx = Map<String, dynamic>.from(t);
-
-                            // ✅ key ตรง backend
-                            final note =
-                                tx["ts_note"]?.toString().trim().isNotEmpty ==
-                                    true
-                                ? tx["ts_note"].toString()
-                                : "-";
-                            final amountNum =
-                                double.tryParse(
-                                  tx["ts_amount"]?.toString() ?? "0",
-                                ) ??
-                                0;
-                            final txId = tx["ts_id"]?.toString() ?? "";
-                            final acNo = tx["ac_no"]?.toString() ?? "";
-
-                            final isDeposit = amountNum >= 0;
-
-                            return ListTile(
-                              title: Text(note),
-                              subtitle: Text(
-                                [
-                                  if (acNo.isNotEmpty) "AC: $acNo",
-                                  if (txId.isNotEmpty) "TX: $txId",
-                                ].join(" • "),
-                              ),
-                              trailing: Text(
-                                "${isDeposit ? "+" : ""}${amountNum.toStringAsFixed(2)}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isDeposit ? Colors.green : Colors.red,
-                                ),
-                              ),
-                            );
-                          }),
-                      ],
+                // ── Balance Box ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    'Balance : $balanceStr',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
                   ),
                 ),
               ],
             ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Deposit / Withdraw Buttons ──
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _goAction(true),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFFFFF),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  child: const Text(
+                    'ฝาก',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _goAction(false),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFFFFF),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  child: const Text(
+                    'ถอน',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Transactions Header ──
+          const Text(
+            'Transactions',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Transaction List ──
+          if (txLoading)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (txError != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(txError!),
+            )
+          else if (transactions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text("No transactions"),
+            )
+          else
+            ...transactions.map((t) {
+              if (t is! Map) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _buildTxCard("Transaction", t.toString(), "", 0),
+                );
+              }
+
+              final tx = Map<String, dynamic>.from(t);
+
+              final note =
+                  tx["ts_note"]?.toString().trim().isNotEmpty == true
+                      ? tx["ts_note"].toString()
+                      : "-";
+              final amountNum =
+                  double.tryParse(tx["ts_amount"]?.toString() ?? "0") ?? 0;
+              final txId = tx["ts_id"]?.toString() ?? "";
+              final acNo = tx["ac_no"]?.toString() ?? "";
+
+              final subtitle = [
+                if (acNo.isNotEmpty) "AC: $acNo",
+                if (txId.isNotEmpty) "TX: $txId",
+              ].join(" ");
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildTxCard(note, subtitle, "", amountNum),
+              );
+            }),
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTxCard(
+    String title,
+    String subtitle,
+    String trailing,
+    double amount,
+  ) {
+    final isDeposit = amount >= 0;
+    final amountStr =
+        "${isDeposit ? "+" : ""}${amount.toStringAsFixed(2)}";
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Left content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Amount
+          Text(
+            amountStr,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDeposit ? Colors.green : Colors.red,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
