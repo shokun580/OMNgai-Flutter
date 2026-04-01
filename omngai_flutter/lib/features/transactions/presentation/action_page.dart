@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/storage/token_storage.dart';
 
+// หน้าเดียวที่ใช้ได้ทั้ง flow ฝากเงินและถอนเงิน
 class ActionPage extends StatefulWidget {
   final bool isDeposit;
   const ActionPage({super.key, required this.isDeposit});
@@ -18,6 +19,7 @@ class _ActionPageState extends State<ActionPage> {
   bool loading = false;
 
   Future<void> submit() async {
+    // ใช้ userId ที่เก็บจาก session เพื่อผูกธุรกรรมกับผู้ใช้ปัจจุบัน
     final userId = await TokenStorage.getUserId();
     if (userId == null) {
       setState(() => msg = "❌ ไม่เจอ userId (ลอง logout/login ใหม่)");
@@ -30,6 +32,7 @@ class _ActionPageState extends State<ActionPage> {
       return;
     }
 
+    // ถอนเงินจะส่งค่า amount ติดลบเพื่อให้ backend แยกประเภทรายการได้
     final signedAmount = widget.isDeposit ? amount : -amount;
     final note = noteCtrl.text.trim().isEmpty
         ? (widget.isDeposit ? "ฝากเงิน" : "ถอนเงิน")
@@ -49,6 +52,7 @@ class _ActionPageState extends State<ActionPage> {
       final status = res.statusCode ?? 0;
       if (status >= 200 && status < 300) {
         setState(() => msg = "✅ สำเร็จ");
+        // กลับหน้าก่อนหน้าเพื่อให้ home เป็นคน refresh ข้อมูลใหม่
         if (mounted) Navigator.pop(context);
       } else {
         setState(() => msg = "⚠️ ไม่สำเร็จ ($status)\n${res.data}");
@@ -69,8 +73,7 @@ class _ActionPageState extends State<ActionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor =
-        widget.isDeposit ? const Color(0xFF94CD7E) : Colors.red;
+    final accentColor = widget.isDeposit ? const Color(0xFF94CD7E) : Colors.red;
     final title = widget.isDeposit ? 'ฝากเงิน' : 'ถอนเงิน';
 
     return Scaffold(
@@ -78,7 +81,7 @@ class _ActionPageState extends State<ActionPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Custom Header ──
+            // ส่วนหัวใช้ชื่อหน้าตามประเภทรายการที่กำลังทำ
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: Row(
@@ -99,7 +102,7 @@ class _ActionPageState extends State<ActionPage> {
               ),
             ),
 
-            // ── Form Card ──
+            // ฟอร์มหลักสำหรับกรอกจำนวนเงินและหมายเหตุ
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -120,7 +123,7 @@ class _ActionPageState extends State<ActionPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Amount label
+                      // ป้ายกำกับของช่องจำนวนเงิน
                       const Text(
                         'Amount',
                         style: TextStyle(
@@ -131,7 +134,7 @@ class _ActionPageState extends State<ActionPage> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Amount field
+                      // ช่องกรอกจำนวนเงินของรายการ
                       TextField(
                         controller: amountCtrl,
                         keyboardType: TextInputType.number,
@@ -146,25 +149,25 @@ class _ActionPageState extends State<ActionPage> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
-                            borderSide:
-                                BorderSide(color: accentColor, width: 1.5),
+                            borderSide: BorderSide(
+                              color: accentColor,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 20),
 
-                      // Note label
+                      // ป้ายกำกับของช่องหมายเหตุ
                       const Text(
                         'Note (Optional)',
                         style: TextStyle(
@@ -175,7 +178,7 @@ class _ActionPageState extends State<ActionPage> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Note field (multiline)
+                      // ช่องหมายเหตุหลายบรรทัด เผื่อผู้ใช้ใส่รายละเอียดเพิ่ม
                       TextField(
                         controller: noteCtrl,
                         maxLines: 4,
@@ -190,25 +193,25 @@ class _ActionPageState extends State<ActionPage> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                BorderSide(color: accentColor, width: 1.5),
+                            borderSide: BorderSide(
+                              color: accentColor,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 20),
 
-                      // Submit button
+                      // ปุ่มยืนยันจะถูกปิดระหว่างส่ง request
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -216,8 +219,9 @@ class _ActionPageState extends State<ActionPage> {
                           onPressed: loading ? null : submit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentColor,
-                            disabledBackgroundColor:
-                                accentColor.withValues(alpha: 0.5),
+                            disabledBackgroundColor: accentColor.withValues(
+                              alpha: 0.5,
+                            ),
                             foregroundColor: Colors.white,
                             disabledForegroundColor: Colors.white70,
                             elevation: 0,
@@ -235,7 +239,7 @@ class _ActionPageState extends State<ActionPage> {
                         ),
                       ),
 
-                      // Message
+                      // แสดงผลลัพธ์ของการ submit ให้ผู้ใช้เห็นทันที
                       if (msg.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         Text(
@@ -255,6 +259,7 @@ class _ActionPageState extends State<ActionPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: widget.isDeposit ? 1 : 2,
         onTap: (index) {
+          // ใช้ bottom nav ชุดเดียวกับหน้า home เพื่อให้สลับ flow ได้ต่อเนื่อง
           if (index == 0) {
             Navigator.pop(context);
           } else if (index == 1 && !widget.isDeposit) {

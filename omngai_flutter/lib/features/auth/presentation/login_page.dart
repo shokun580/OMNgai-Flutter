@@ -3,6 +3,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../home/presentation/home_page.dart';
 
+// หน้า login สำหรับรับ credential และสร้าง session ของผู้ใช้
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -24,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    // อัปเดตสถานะปุ่ม login แบบ real-time เมื่อมีการพิมพ์ข้อมูล
     emailController.addListener(() => setState(() {}));
     passwordController.addListener(() => setState(() {}));
   }
@@ -35,6 +37,7 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      // backend ใช้ key เป็น username แม้ UI จะเรียก field นี้ว่า email/username
       final res = await DioClient.dio.post(
         "/login",
         data: {
@@ -48,6 +51,7 @@ class _LoginPageState extends State<LoginPage> {
       if (status == 200 && res.data["token"] != null) {
         final token = res.data["token"] as String;
 
+        // รองรับกรณี id จาก API อาจมาเป็น int หรือ string
         final userIdDynamic = res.data["user"]?["id"];
         final userId = (userIdDynamic is int)
             ? userIdDynamic
@@ -61,6 +65,7 @@ class _LoginPageState extends State<LoginPage> {
         await TokenStorage.saveToken(token);
         await TokenStorage.saveUserId(userId);
 
+        // เปลี่ยน route หลัง login สำเร็จเพื่อไม่ให้กดย้อนกลับมาหน้าเดิม
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -96,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const SizedBox(height: 50),
 
-              // --- Title ---
+              // ส่วนหัวของหน้า login
               const Text(
                 'Login',
                 style: TextStyle(
@@ -108,15 +113,12 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 30),
 
-              // --- Logo ---
-              Image.asset(
-                'assets/images/image 5.png',
-                height: 180,
-              ),
+              // โลโก้ของแอป
+              Image.asset('assets/images/image 5.png', height: 180),
 
               const SizedBox(height: 40),
 
-              // --- Email Field ---
+              // ช่องกรอก username
               TextField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -129,8 +131,10 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 18,
+                    horizontal: 20,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide(color: Colors.grey.shade300),
@@ -142,14 +146,16 @@ class _LoginPageState extends State<LoginPage> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide(
-                        color: const Color(0xFF94CD7E), width: 1.5),
+                      color: const Color(0xFF94CD7E),
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // --- Password Field ---
+              // ช่องกรอกรหัสผ่าน
               TextField(
                 controller: passwordController,
                 obscureText: true,
@@ -162,8 +168,10 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 18,
+                    horizontal: 20,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide(color: Colors.grey.shade300),
@@ -175,14 +183,16 @@ class _LoginPageState extends State<LoginPage> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide(
-                        color: const Color(0xFF94CD7E), width: 1.5),
+                      color: const Color(0xFF94CD7E),
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
 
               const SizedBox(height: 32),
 
-              // --- Login Button ---
+              // ปุ่มจะกดได้เมื่อกรอกข้อมูลครบและไม่ได้อยู่ระหว่างส่ง request
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -212,12 +222,9 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 16),
 
-              // --- Message ---
+              // แสดงสถานะหรือข้อความผิดพลาดจากการ login
               if (msg.isNotEmpty)
-                Text(
-                  msg,
-                  style: const TextStyle(color: Colors.red),
-                ),
+                Text(msg, style: const TextStyle(color: Colors.red)),
             ],
           ),
         ),

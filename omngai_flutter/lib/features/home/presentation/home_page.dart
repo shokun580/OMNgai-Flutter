@@ -4,6 +4,7 @@ import '../../../core/storage/token_storage.dart';
 import '../../auth/presentation/login_page.dart';
 import '../../transactions/presentation/action_page.dart';
 
+// หน้า dashboard หลัก แสดงข้อมูลบัญชีและรายการเดินบัญชีของผู้ใช้
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -27,6 +28,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    // โหลดข้อมูลที่ต้องใช้ทั้งหมดทันทีเมื่อเข้าหน้า home
     initData();
   }
 
@@ -34,6 +36,7 @@ class _HomePageState extends State<HomePage> {
     userId = await TokenStorage.getUserId();
 
     if (userId == null) {
+      // ถ้า session ไม่สมบูรณ์ให้บังคับกลับไป login ใหม่
       await logout();
       return;
     }
@@ -65,6 +68,7 @@ class _HomePageState extends State<HomePage> {
 
         Map<String, dynamic>? parsedAccount;
 
+        // รองรับ response ได้หลายรูปแบบตาม backend ที่ส่งกลับมา
         if (data is List && data.isNotEmpty && data.first is Map) {
           parsedAccount = Map<String, dynamic>.from(data.first);
         } else if (data is Map) {
@@ -122,6 +126,7 @@ class _HomePageState extends State<HomePage> {
         final data = res.data;
 
         List<dynamic> list = [];
+        // รองรับทั้ง response ที่เป็น list ตรง ๆ และแบบห่อไว้ใน data
         if (data is Map && data["data"] is List) {
           list = List<dynamic>.from(data["data"]);
         } else if (data is List) {
@@ -147,6 +152,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> logout() async {
+    // ล้าง session แล้ว reset navigation stack กลับไปหน้า login
     await TokenStorage.clear();
     if (!context.mounted) return;
 
@@ -158,11 +164,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onTabTapped(int index) {
+    // แท็บล่าง 2 อันหลังทำหน้าที่เปิด flow ฝาก/ถอนแทนการสลับหน้า
     if (index == 1) {
-      // ฝากเงิน
       _goAction(true);
     } else if (index == 2) {
-      // ถอนเงิน
       _goAction(false);
     } else {
       setState(() => _currentIndex = 0);
@@ -175,7 +180,7 @@ class _HomePageState extends State<HomePage> {
       MaterialPageRoute(builder: (_) => ActionPage(isDeposit: isDeposit)),
     );
 
-    // กลับมาแล้ว refresh + กลับไปแท็บบัญชี
+    // เมื่อกลับจากหน้าทำรายการ ให้รีโหลดข้อมูลล่าสุดแล้วชี้กลับแท็บบัญชี
     setState(() => _currentIndex = 0);
     await Future.wait([loadAccount(), loadTransactions()]);
   }
@@ -188,13 +193,13 @@ class _HomePageState extends State<HomePage> {
         child: loading
             ? const Center(child: CircularProgressIndicator())
             : error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(error!, textAlign: TextAlign.center),
-                    ),
-                  )
-                : _buildAccountBody(),
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(error!, textAlign: TextAlign.center),
+                ),
+              )
+            : _buildAccountBody(),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -227,7 +232,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildAccountBody() {
     final acNo = account?["ac_no"]?.toString() ?? "-";
     final balance = account?["ac_balance"]?.toString() ?? "0";
-    // Format balance with 2 decimal places
+    // บังคับรูปแบบยอดเงินให้แสดงทศนิยม 2 ตำแหน่งเสมอ
     final balanceNum = double.tryParse(balance) ?? 0;
     final balanceStr = balanceNum.toStringAsFixed(2);
 
@@ -241,7 +246,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           const SizedBox(height: 16),
 
-          // ── Header: OmNgai + icons ──
+          // ส่วนหัวพร้อมปุ่ม refresh และ logout
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -258,10 +263,7 @@ class _HomePageState extends State<HomePage> {
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.black54),
                     onPressed: () async {
-                      await Future.wait([
-                        loadAccount(),
-                        loadTransactions(),
-                      ]);
+                      await Future.wait([loadAccount(), loadTransactions()]);
                     },
                   ),
                   IconButton(
@@ -275,7 +277,7 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 16),
 
-          // ── Green Account Card ──
+          // การ์ดสรุปเลขบัญชีและยอดเงินปัจจุบัน
           Container(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -293,7 +295,7 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Account title + number
+                    // ชื่อหัวข้อและเลขบัญชี
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -315,18 +317,14 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
-                    // Pig icon (white savings icon)
-                    const Icon(
-                      Icons.savings,
-                      size: 70,
-                      color: Colors.white,
-                    ),
+                    // ไอคอนตกแต่งของการ์ดบัญชี
+                    const Icon(Icons.savings, size: 70, color: Colors.white),
                   ],
                 ),
 
                 const SizedBox(height: 16),
 
-                // ── Balance Box ──
+                // กล่องแสดงยอดคงเหลือ
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -352,7 +350,7 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 16),
 
-          // ── Deposit / Withdraw Buttons ──
+          // ปุ่มลัดสำหรับเปิดหน้าฝากหรือถอนเงิน
           Row(
             children: [
               Expanded(
@@ -403,7 +401,7 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 24),
 
-          // ── Transactions Header ──
+          // หัวข้อของรายการเคลื่อนไหวบัญชี
           const Text(
             'Transactions',
             style: TextStyle(
@@ -415,17 +413,14 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 12),
 
-          // ── Transaction List ──
+          // สลับสถานะระหว่าง loading, error, empty state และ list จริง
           if (txLoading)
             const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: CircularProgressIndicator()),
             )
           else if (txError != null)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(txError!),
-            )
+            Padding(padding: const EdgeInsets.all(16), child: Text(txError!))
           else if (transactions.isEmpty)
             const Padding(
               padding: EdgeInsets.all(16),
@@ -442,15 +437,15 @@ class _HomePageState extends State<HomePage> {
 
               final tx = Map<String, dynamic>.from(t);
 
-              final note =
-                  tx["ts_note"]?.toString().trim().isNotEmpty == true
-                      ? tx["ts_note"].toString()
-                      : "-";
+              final note = tx["ts_note"]?.toString().trim().isNotEmpty == true
+                  ? tx["ts_note"].toString()
+                  : "-";
               final amountNum =
                   double.tryParse(tx["ts_amount"]?.toString() ?? "0") ?? 0;
               final txId = tx["ts_id"]?.toString() ?? "";
               final acNo = tx["ac_no"]?.toString() ?? "";
 
+              // รวมข้อมูลอ้างอิงที่มีอยู่ให้แสดงในบรรทัดรองของการ์ด
               final subtitle = [
                 if (acNo.isNotEmpty) "AC: $acNo",
                 if (txId.isNotEmpty) "TX: $txId",
@@ -475,8 +470,7 @@ class _HomePageState extends State<HomePage> {
     double amount,
   ) {
     final isDeposit = amount >= 0;
-    final amountStr =
-        "${isDeposit ? "+" : ""}${amount.toStringAsFixed(2)}";
+    final amountStr = "${isDeposit ? "+" : ""}${amount.toStringAsFixed(2)}";
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -493,7 +487,7 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
-          // Left content
+          // ฝั่งซ้ายใช้แสดงชื่อรายการและรายละเอียดอ้างอิง
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,16 +504,13 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
                   ),
                 ],
               ],
             ),
           ),
-          // Amount
+          // ฝั่งขวาใช้สีเพื่อแยกฝากเงินกับถอนเงิน
           Text(
             amountStr,
             style: TextStyle(
